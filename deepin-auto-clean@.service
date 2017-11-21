@@ -1,0 +1,10 @@
+[Unit]
+Description=Auto clean files server
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env "HOME=/home/%i" /usr/bin/deepin-auto-clean --exec --hidden
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

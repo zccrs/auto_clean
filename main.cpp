@@ -23,25 +23,64 @@
 #include <QDir>
 #include <QDebug>
 
-static QList<QRegExp> white_list;
+class DRegExp : public QRegExp
+{
+public:
+    explicit DRegExp(const QString &pattern, Qt::CaseSensitivity cs = Qt::CaseSensitive,
+                     PatternSyntax syntax = RegExp)
+        : QRegExp(pattern, cs, syntax)
+    {
+
+    }
+
+    bool exactMatch(const QString &str) const
+    {
+        if (!isNot)
+            return QRegExp::exactMatch(str);
+
+        return !QRegExp::exactMatch(str);
+    }
+
+    DRegExp(const DRegExp &rx)
+        : QRegExp(rx)
+    {
+        isNot = rx.isNot;
+    }
+
+    DRegExp &operator=(const DRegExp &rx)
+    {
+        QRegExp::operator =(rx);
+        isNot = rx.isNot;
+    }
+
+    bool isNot = false;
+};
+
+static QList<DRegExp> white_list;
 static bool exec = false;
 static QDir::Filters flags = QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot;
 
-void removeFile(const QString &file)
+void removeFile(const QString &file, bool onlyFile, bool onlyDir)
 {
-    for (const QRegExp &re : white_list) {
+    QFileInfo info(file);
+
+    if (info.isDir() && onlyFile)
+        return;
+
+    if (info.isFile() && onlyDir)
+        return;
+
+    for (const DRegExp &re : white_list) {
         if (re.exactMatch(file)) {
-            qDebug() << "Matched by the white list, pattern:" << re.pattern() << "file:" << file;
+            qDebug() << "Matched by the white list, pattern:" << re.pattern() << "file:" << file << "is not:" << re.isNot;
 
             return;
         }
     }
 
-    QFileInfo info(file);
-
     if (info.isDir()) {
         for (const QFileInfo &f : QDir(file).entryInfoList(flags))
-            removeFile(f.absoluteFilePath());
+            removeFile(f.absoluteFilePath(), onlyFile, onlyDir);
     }
 
     if (info.exists()) {
@@ -67,7 +106,7 @@ void removeFile(const QString &file)
 
     for (const QFileInfo &f : info.absoluteDir().entryInfoList(QStringList() << info.fileName(),
                                                                flags)) {
-        removeFile(f.absoluteFilePath());
+        removeFile(f.absoluteFilePath(), onlyFile, onlyDir);
     }
 }
 
@@ -85,24 +124,45 @@ int main(int argc, char *argv[])
     QFile white_list_file(CONFIG_PATH "/white.txt");
     QFile black_list_file(CONFIG_PATH "/black.txt");
 
-    white_list << QRegExp(white_list_file.fileName(), Qt::CaseSensitive, QRegExp::Wildcard);
-    white_list << QRegExp(black_list_file.fileName(), Qt::CaseSensitive, QRegExp::Wildcard);
-    white_list << QRegExp(app.applicationFilePath(), Qt::CaseSensitive, QRegExp::Wildcard);
+    white_list << DRegExp(white_list_file.fileName(), Qt::CaseSensitive, QRegExp::Wildcard);
+    white_list << DRegExp(black_list_file.fileName(), Qt::CaseSensitive, QRegExp::Wildcard);
+    white_list << DRegExp(app.applicationFilePath(), Qt::CaseSensitive, QRegExp::Wildcard);
 
     qDebug() << "+++++white list begin+++++";
 
     if (white_list_file.open(QFile::ReadOnly)) {
         while (!white_list_file.atEnd()) {
-            const QString &line = QString::fromUtf8(white_list_file.readLine().trimmed());
+            QByteArray line_data = white_list_file.readLine().trimmed();
 
-            if (line.isEmpty() || line.startsWith("#") || line.startsWith("//"))
+            if (line_data.isEmpty() || line_data.startsWith("#") || line_data.startsWith("//")) {
+                qDebug() << "Skip:" << QString::fromUtf8(line_data);
+
                 continue;
+            }
 
-            qDebug() << line;
+            qDebug() << QString::fromUtf8(line_data);
 
-            QRegExp re(line.startsWith("~/") ? QDir::home().absoluteFilePath(line.mid(2)) : line,
+            bool is_not = false;
+
+            if (line_data.startsWith("!")) {
+                is_not = true;
+                line_data = line_data.mid(1);
+            } else if (line_data.startsWith("=")) {
+                line_data = QRegExp::escape(QString::fromUtf8(line_data.mid(1))).toUtf8();
+            }
+
+            if (!line_data.startsWith("~/") && !line_data.startsWith("/")) {
+                qWarning() << "!!!---Invalid Row---!!!";
+
+                continue;
+            }
+
+            const QString &line = QString::fromUtf8(line_data);
+
+            DRegExp re(line.startsWith("~/") ? QDir::home().absoluteFilePath(line.mid(2)) : line,
                        Qt::CaseSensitive, QRegExp::Wildcard);
 
+            re.isNot = is_not;
             white_list << re;
         }
     }
@@ -112,17 +172,39 @@ int main(int argc, char *argv[])
 
     if (black_list_file.open(QFile::ReadOnly)) {
         while (!black_list_file.atEnd()) {
-            const QString &line = QString::fromUtf8(black_list_file.readLine().trimmed());
+            QByteArray line_data = black_list_file.readLine().trimmed();
 
-            if (line.isEmpty() || line.startsWith("#") || line.startsWith("//"))
+            if (line_data.isEmpty() || line_data.startsWith("#") || line_data.startsWith("//")) {
+                qDebug() << "Skip:" << QString::fromUtf8(line_data);
+
                 continue;
+            }
 
-            qDebug() << line;
+            qDebug() << QString::fromUtf8(line_data);
+
+            bool only_file = false;
+            bool only_dir = false;
+
+            if (line_data.startsWith("f")) {
+                only_file = true;
+                line_data = line_data.mid(1);
+            } else if (line_data.startsWith("d")) {
+                only_dir = true;
+                line_data = line_data.mid(1);
+            }
+
+            if (!line_data.startsWith("~/") && !line_data.startsWith("/")) {
+                qWarning() << "!!!---Invalid Row---!!!";
+
+                continue;
+            }
+
+            const QString &line = QString::fromUtf8(line_data);
 
             if (line.startsWith("~/"))
-                removeFile(QDir::home().absoluteFilePath(line.mid(2)));
+                removeFile(QDir::home().absoluteFilePath(line.mid(2)), only_file, only_dir);
             else
-                removeFile(line);
+                removeFile(line, only_file, only_dir);
         }
     }
 

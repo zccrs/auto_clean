@@ -1,6 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=deepin-autoclean
-Exec=env "HOME=/home/lianjia" deepin-auto-clean --exec --hidden
-NoDisplay=true
-StartupNotify=false

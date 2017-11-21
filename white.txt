@@ -25,4 +25,3 @@
 ~/.themes
 ~/.sogouinput
 ~/.local/share
-
