@@ -82,8 +82,8 @@ int main(int argc, char *argv[])
             flags |= QDir::Hidden;
     }
 
-    QFile white_list_file(QDir::home().absoluteFilePath(".config/auto_clean/white.txt"));
-    QFile black_list_file(QDir::home().absoluteFilePath(".config/auto_clean/black.txt"));
+    QFile white_list_file(CONFIG_PATH "/white.txt");
+    QFile black_list_file(CONFIG_PATH "/black.txt");
 
     white_list << QRegExp(white_list_file.fileName(), Qt::CaseSensitive, QRegExp::Wildcard);
     white_list << QRegExp(black_list_file.fileName(), Qt::CaseSensitive, QRegExp::Wildcard);

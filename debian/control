@@ -1,0 +1,11 @@
+Source: deepin-auto-clean
+Section: devel
+Priority: optional
+Maintainer: Deepin Packages Builder <packages@deepin.com>
+Build-Depends: debhelper (>=9), qt5-default, qtbase5-dev
+Standards-Version: 3.9.8
+
+Package: deepin-auto-clean
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: File Auto Clean 
