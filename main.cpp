@@ -18,6 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <QCoreApplication>
 #include <QFile>
 #include <QDir>
 #include <QDebug>
@@ -44,13 +45,21 @@ void removeFile(const QString &file)
     }
 
     if (info.exists()) {
-        qInfo() << "will remove:" << file;
+        qInfo() << "will do remove:" << file;
 
         if (!exec)
             return;
 
-        if (!QFile::remove(file)) {
-            qWarning() << "Faile remove file:" << file;
+        if (info.isDir()) {
+            if (!QDir::current().rmdir(file)) {
+                qWarning() << "Faile remove dir:" << file;
+            }
+        } else {
+            QFile tmp_file(file);
+
+            if (!tmp_file.remove(file)) {
+                qWarning() << "Faile remove file:" << file << "error:" << tmp_file.errorString();
+            }
         }
 
         return;
@@ -64,21 +73,21 @@ void removeFile(const QString &file)
 
 int main(int argc, char *argv[])
 {
-    for (int i = 1; i < argc; ++i) {
-        if (QByteArray("--exec") == argv[i])
+    QCoreApplication app(argc, argv);
+
+    for (const QString &arg : app.arguments()) {
+        if (QStringLiteral("--exec") == arg)
             exec = true;
-        else if (QByteArray("--hidden") == argv[i])
+        else if (QStringLiteral("--hidden") == arg)
             flags |= QDir::Hidden;
     }
-
-    if (argc > 1 && argv[1] == QByteArray("--exec"))
-        exec = true;
 
     QFile white_list_file(QDir::home().absoluteFilePath(".config/auto_clean/white.txt"));
     QFile black_list_file(QDir::home().absoluteFilePath(".config/auto_clean/black.txt"));
 
     white_list << QRegExp(white_list_file.fileName(), Qt::CaseSensitive, QRegExp::Wildcard);
     white_list << QRegExp(black_list_file.fileName(), Qt::CaseSensitive, QRegExp::Wildcard);
+    white_list << QRegExp(app.applicationFilePath(), Qt::CaseSensitive, QRegExp::Wildcard);
 
     qDebug() << "+++++white list begin+++++";
 
