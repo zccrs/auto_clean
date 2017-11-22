@@ -4,6 +4,8 @@ Description=Auto clean files server
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/env "HOME=/home/%i" /usr/bin/deepin-auto-clean --exec --hidden
+ExecStop=/usr/bin/env "HOME=/home/%i" /usr/bin/deepin-auto-clean --exec --hidden
+RemainAfterExit=yes
 Restart=no
 
 [Install]
