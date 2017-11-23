@@ -58,7 +58,7 @@ public:
 
 static QList<DRegExp> white_list;
 static bool exec = false;
-static QDir::Filters flags = QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot;
+static QDir::Filters flags = QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot | QDir::System;
 
 void removeFile(const QString &file, bool onlyFile, bool onlyDir)
 {
@@ -83,7 +83,7 @@ void removeFile(const QString &file, bool onlyFile, bool onlyDir)
             removeFile(f.absoluteFilePath(), onlyFile, onlyDir);
     }
 
-    if (info.exists()) {
+    if (info.exists() || info.isSymLink()) {
         qInfo() << "will do remove:" << file;
 
         if (!exec)
