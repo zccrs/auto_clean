@@ -64,7 +64,7 @@ void removeFile(const QString &file, bool onlyFile, bool onlyDir)
 {
     QFileInfo info(file);
 
-    if (info.isDir() && onlyFile)
+    if ((info.isDir() && !info.isSymLink()) && onlyFile)
         return;
 
     if (info.isFile() && onlyDir)
@@ -78,7 +78,7 @@ void removeFile(const QString &file, bool onlyFile, bool onlyDir)
         }
     }
 
-    if (info.isDir()) {
+    if (info.isDir() && !info.isSymLink()) {
         for (const QFileInfo &f : QDir(file).entryInfoList(flags))
             removeFile(f.absoluteFilePath(), onlyFile, onlyDir);
     }
@@ -89,7 +89,7 @@ void removeFile(const QString &file, bool onlyFile, bool onlyDir)
         if (!exec)
             return;
 
-        if (info.isDir()) {
+        if (info.isDir() && !info.isSymLink()) {
             if (!QDir::current().rmdir(file)) {
                 qWarning() << "Faile remove dir:" << file;
             }
