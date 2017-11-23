@@ -119,6 +119,14 @@ int main(int argc, char *argv[])
             exec = true;
         else if (QStringLiteral("--hidden") == arg)
             flags |= QDir::Hidden;
+        else if (QStringLiteral("--home") == arg)
+            qputenv("HOME", arg.toUtf8());
+    }
+
+    if (QDir::homePath().isEmpty() || QDir::homePath() == "/") {
+        qWarning() << "Invalid home path";
+
+        return -1;
     }
 
     QFile white_list_file(CONFIG_PATH "/white.txt");
